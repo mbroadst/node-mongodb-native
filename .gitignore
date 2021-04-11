@@ -54,7 +54,7 @@ node_modules
 yarn.lock
 lib/
 *.tgz
-*.d.ts
+/*.d.ts
 
 .vscode
 output

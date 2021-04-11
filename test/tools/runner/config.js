@@ -49,7 +49,8 @@ class TestConfiguration {
       host: hostAddresses[0].host,
       port: typeof hostAddresses[0].host === 'string' ? hostAddresses[0].port : undefined,
       db: url.pathname.slice(1) ? url.pathname.slice(1) : 'integration_tests',
-      replicaSet: url.searchParams.get('replicaSet')
+      replicaSet: url.searchParams.get('replicaSet'),
+      grpc: url.searchParams.get('grpc')
     };
     if (url.username) {
       this.options.auth = {
@@ -130,6 +131,10 @@ class TestConfiguration {
 
     if (this.options.replicaSet) {
       Object.assign(dbOptions, { replicaSet: this.options.replicaSet });
+    }
+
+    if (this.options.grpc) {
+      Object.assign(dbOptions, { grpc: this.options.grpc });
     }
 
     // Flatten any options nested under `writeConcern` before we make the connection string

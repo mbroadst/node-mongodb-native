@@ -213,7 +213,8 @@ function checkServer(monitor: Monitor, callback: Callback<Document>) {
     const connectTimeoutMS = monitor.options.connectTimeoutMS;
     const maxAwaitTimeMS = monitor.options.heartbeatFrequencyMS;
     const topologyVersion = monitor[kServer].description.topologyVersion;
-    const isAwaitable = topologyVersion != null;
+    // const isAwaitable = topologyVersion != null;
+    const isAwaitable = false; // always false for grpc
 
     const cmd =
       isAwaitable && topologyVersion
@@ -327,13 +328,13 @@ function monitorServer(monitor: Monitor) {
       }
 
       // if the check indicates streaming is supported, immediately reschedule monitoring
-      if (isMaster && isMaster.topologyVersion) {
-        setTimeout(() => {
-          if (!isInCloseState(monitor)) {
-            monitor[kMonitorId]?.wake();
-          }
-        }, 0);
-      }
+      // if (isMaster && isMaster.topologyVersion) {
+      //   setTimeout(() => {
+      //     if (!isInCloseState(monitor)) {
+      //       monitor[kMonitorId]?.wake();
+      //     }
+      //   }, 0);
+      // }
 
       done();
     });

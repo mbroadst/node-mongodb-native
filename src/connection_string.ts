@@ -1070,6 +1070,7 @@ export const OPTIONS = {
   pfx: { type: 'any' },
   secureProtocol: { type: 'any' },
   index: { type: 'any' },
+  grpc: { type: 'boolean' },
   // Legacy Options, these are unused but left here to avoid errors with CSFLE lib
   useNewUrlParser: { type: 'boolean' } as OptionDescriptor,
   useUnifiedTopology: { type: 'boolean' } as OptionDescriptor

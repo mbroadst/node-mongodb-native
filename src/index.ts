@@ -138,7 +138,12 @@ export type {
   OpGetMoreOptions,
   OpQueryOptions
 } from './cmap/commands';
-export type { Stream, LEGAL_TLS_SOCKET_OPTIONS, LEGAL_TCP_SOCKET_OPTIONS } from './cmap/connect';
+export type {
+  Stream,
+  SocketLike,
+  LEGAL_TLS_SOCKET_OPTIONS,
+  LEGAL_TCP_SOCKET_OPTIONS
+} from './cmap/connect';
 export type {
   Connection,
   ConnectionOptions,

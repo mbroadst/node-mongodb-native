@@ -4,7 +4,7 @@ import { Connection, ConnectionOptions, CryptoConnection } from './connection';
 import { MongoError, MongoNetworkError, MongoNetworkTimeoutError, AnyError } from '../error';
 import { AUTH_PROVIDERS, AuthMechanism } from './auth/defaultAuthProviders';
 import { AuthContext } from './auth/auth_provider';
-import { makeClientMetadata, ClientMetadata, Callback, CallbackWithType, ns } from '../utils';
+import { makeClientMetadata, ClientMetadata, Callback, CallbackWithType, ns, uuidV4 } from '../utils';
 import {
   MAX_SUPPORTED_WIRE_VERSION,
   MAX_SUPPORTED_SERVER_VERSION,
@@ -16,13 +16,26 @@ import type { Document } from '../bson';
 import type { Socket, SocketConnectOpts } from 'net';
 import type { TLSSocket, ConnectionOptions as TLSConnectionOpts } from 'tls';
 import { Int32 } from '../bson';
+import { GrpcStream } from './grpc/grpc_stream';
+import type { Duplex } from 'stream';
 
 /** @public */
-export type Stream = Socket | TLSSocket;
+export interface SocketLike extends Duplex {
+  readonly remoteAddress?: string;
+  readonly remotePort?: number;
+
+  address(): any;
+  setTimeout(timeout: number, callback?: () => void): this;
+  setNoDelay(noDelay?: boolean): this;
+  setKeepAlive(enable?: boolean, initialDelay?: number): this;
+}
+
+/** @public */
+export type Stream = Socket | TLSSocket | SocketLike;
 
 export function connect(options: ConnectionOptions, callback: Callback<Connection>): void {
-  makeConnection(options, (err, socket) => {
-    if (err || !socket) {
+  makeConnection(options, (err, stream) => {
+    if (err || !stream) {
       return callback(err);
     }
 
@@ -30,7 +43,15 @@ export function connect(options: ConnectionOptions, callback: Callback<Connectio
     if (options.autoEncrypter) {
       ConnectionType = CryptoConnection;
     }
-    performInitialHandshake(new ConnectionType(socket, options), options, callback);
+
+    if (stream instanceof GrpcStream) {
+      if (!stream.needsHandshake) {
+        process.nextTick(() => callback(undefined, new ConnectionType(stream, options)));
+        return;
+      }
+    }
+
+    performInitialHandshake(new ConnectionType(stream, options), options, callback);
   });
 }
 
@@ -119,6 +140,10 @@ function performInitialHandshake(
       //       relocated, or at very least restructured.
       conn.ismaster = response;
       conn.lastIsMasterMS = new Date().getTime() - start;
+
+      if (conn.stream instanceof GrpcStream && conn.stream.needsHandshake) {
+        conn.stream.handshakeCompleted();
+      }
 
       if (!response.arbiterOnly && credentials) {
         // store the response on auth context
@@ -279,6 +304,11 @@ function makeConnection(options: ConnectionOptions, _callback: CallbackWithType<
 
     _callback(err, ret);
   };
+
+  if (options.grpc === true) {
+    callback(undefined, new GrpcStream({ ...options, lcid: uuidV4().toString('hex') }));
+    return;
+  }
 
   if (useTLS) {
     const tlsSocket = tls.connect(parseSslOptions(options));

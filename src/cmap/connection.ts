@@ -43,6 +43,7 @@ import { ReadPreference, ReadPreferenceLike } from '../read_preference';
 import { isTransactionCommand } from '../transactions';
 import type { W, WriteConcern, WriteConcernOptions } from '../write_concern';
 import type { ServerApi, SupportedNodeConnectionOptions } from '../mongo_client';
+import type { GrpcTransport } from './grpc/grpc_stream';
 
 const kStream = Symbol('stream');
 const kQueue = Symbol('queue');
@@ -124,6 +125,10 @@ export interface ConnectionOptions
   cancellationToken?: EventEmitter;
 
   metadata: ClientMetadata;
+
+  // gRPC support
+  grpc?: boolean;
+  grpcTransport?: GrpcTransport;
 }
 
 /** @public */

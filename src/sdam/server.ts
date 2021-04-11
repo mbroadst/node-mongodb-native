@@ -45,6 +45,10 @@ import type { Document, Long } from '../bson';
 import type { AutoEncrypter } from '../deps';
 import type { ServerApi } from '../mongo_client';
 
+// gRPC support
+import * as grpc from '@grpc/grpc-js';
+import { GrpcTransport } from '../cmap/grpc/grpc_stream';
+
 // Used for filtering out fields for logging
 const DEBUG_FIELDS = [
   'reconnect',
@@ -81,6 +85,7 @@ const stateTransition = makeStateMachine({
 });
 
 const kMonitor = Symbol('monitor');
+const kGrpcTransport = Symbol('grpcTransport');
 
 /** @public */
 export type ServerOptions = Omit<ConnectionPoolOptions, 'id' | 'generation' | 'hostAddress'> &
@@ -113,6 +118,9 @@ export class Server extends EventEmitter {
   ismaster?: Document;
   [kMonitor]: Monitor;
 
+  /** @internal */
+  [kGrpcTransport]?: GrpcTransport;
+
   /** @event */
   static readonly SERVER_HEARTBEAT_STARTED = 'serverHeartbeatStarted' as const;
   /** @event */
@@ -137,6 +145,17 @@ export class Server extends EventEmitter {
     this.serverApi = options.serverApi;
 
     const poolOptions = { hostAddress: description.hostAddress, ...options };
+    const monitorOptions = { ...options };
+
+    if (options.grpc === true) {
+      this[kGrpcTransport] = new GrpcTransport(
+        poolOptions.hostAddress.toString(),
+        grpc.credentials.createInsecure()
+      );
+
+      monitorOptions.grpcTransport = this[kGrpcTransport];
+      poolOptions.grpcTransport = this[kGrpcTransport];
+    }
 
     this.s = {
       description,
@@ -158,7 +177,7 @@ export class Server extends EventEmitter {
     });
 
     // create the monitor
-    this[kMonitor] = new Monitor(this, this.s.options);
+    this[kMonitor] = new Monitor(this, monitorOptions);
     relayEvents(this[kMonitor], this, [
       Server.SERVER_HEARTBEAT_STARTED,
       Server.SERVER_HEARTBEAT_SUCCEEDED,
@@ -228,6 +247,10 @@ export class Server extends EventEmitter {
 
     this[kMonitor].close();
     this.s.pool.close(options, err => {
+      if (this[kGrpcTransport]) {
+        this[kGrpcTransport]?.close();
+      }
+
       stateTransition(this, STATE_CLOSED);
       this.emit('closed');
       if (typeof callback === 'function') {

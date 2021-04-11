@@ -683,6 +683,8 @@ export interface MongoOptions
    */
   tls: boolean;
 
+  grpc: boolean;
+
   /**
    * Turn these options into a reusable connection URI
    */
